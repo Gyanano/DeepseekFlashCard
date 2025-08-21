@@ -102,8 +102,9 @@ export class DeepseekAPI {
           return this.parseQuestionsResponse(content)
           
         } catch (fetchError) {
-          console.log(`${endpoint} 请求失败:`, fetchError.message)
-          lastError = fetchError
+          const errorMsg = fetchError instanceof Error ? fetchError.message : String(fetchError)
+          console.log(`${endpoint} 请求失败:`, errorMsg)
+          lastError = fetchError instanceof Error ? fetchError : new Error(String(fetchError))
           continue
         }
       }
