@@ -3,7 +3,7 @@ export const config = {
   // Deepseek API 配置
   deepseek: {
     apiKey: process.env.DEEPSEEK_API_KEY || '',
-    baseUrl: process.env.DEEPSEEK_API_BASE_URL || 'https://api.deepseek.com',
+    baseUrl: process.env.DEEPSEEK_API_BASE_URL || 'https://api.gyanano.com',
     model: 'deepseek-chat', // Deepseek 的模型名称
   },
   
