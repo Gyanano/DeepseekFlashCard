@@ -20,43 +20,97 @@ export class DeepseekAPI {
     const prompt = this.createQuestionPrompt(topic, count)
 
     try {
-      const response = await fetch(`${this.baseUrl}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKey}`,
-        },
-        body: JSON.stringify({
-          model: this.model,
-          messages: [
-            {
-              role: 'system',
-              content: '你是一个专业的教育内容创建者，善于创建高质量的选择题。请严格按照要求的JSON格式返回答案，不要包含任何其他文本。'
+      console.log('正在调用中转站API:', this.baseUrl)
+      
+      // 尝试不同的API端点路径
+      const possibleEndpoints = [
+        '/chat/completions',
+        '/v1/chat/completions', 
+        '/api/chat/completions',
+        '/deepseek/chat/completions'
+      ]
+      
+      let lastError = null
+      
+      for (const endpoint of possibleEndpoints) {
+        const fullUrl = `${this.baseUrl}${endpoint}`
+        console.log('尝试端点:', fullUrl)
+        
+        try {
+          const response = await fetch(fullUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${this.apiKey}`,
             },
-            {
-              role: 'user',
-              content: prompt
-            }
-          ],
-          temperature: 0.7,
-          max_tokens: 4000,
-        }),
-      })
+            body: JSON.stringify({
+              model: this.model,
+              messages: [
+                {
+                  role: 'system',
+                  content: '你是一个专业的教育内容创建者，善于创建高质量的选择题。请严格按照要求的JSON格式返回答案，不要包含任何其他文本。'
+                },
+                {
+                  role: 'user',
+                  content: prompt
+                }
+              ],
+              temperature: 0.7,
+              max_tokens: 4000,
+            }),
+          })
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(`Deepseek API 错误: ${response.status} - ${errorData.error?.message || '未知错误'}`)
+          console.log(`${endpoint} 响应状态:`, response.status)
+          
+          // 先获取原始文本来调试
+          const responseText = await response.text()
+          console.log(`${endpoint} 原始响应前200字符:`, responseText.substring(0, 200))
+          
+          if (!response.ok) {
+            console.log(`${endpoint} 失败，尝试下一个端点`)
+            lastError = new Error(`${endpoint}: ${response.status} - ${responseText.substring(0, 200)}`)
+            continue
+          }
+
+          // 检查响应是否是HTML
+          if (responseText.trim().startsWith('<!doctype') || responseText.trim().startsWith('<html')) {
+            console.log(`${endpoint} 返回HTML，尝试下一个端点`)
+            lastError = new Error(`${endpoint} 返回了HTML而不是JSON`)
+            continue
+          }
+
+          // 尝试解析JSON
+          let data
+          try {
+            data = JSON.parse(responseText)
+          } catch (parseError) {
+            console.log(`${endpoint} JSON解析失败，尝试下一个端点`)
+            lastError = parseError
+            continue
+          }
+          
+          const content = data.choices[0]?.message?.content
+
+          if (!content) {
+            console.log(`${endpoint} 内容为空，尝试下一个端点`)
+            lastError = new Error(`${endpoint} 返回的内容为空`)
+            continue
+          }
+
+          // 成功！解析JSON响应
+          console.log(`${endpoint} 成功！`)
+          return this.parseQuestionsResponse(content)
+          
+        } catch (fetchError) {
+          console.log(`${endpoint} 请求失败:`, fetchError.message)
+          lastError = fetchError
+          continue
+        }
       }
-
-      const data = await response.json()
-      const content = data.choices[0]?.message?.content
-
-      if (!content) {
-        throw new Error('Deepseek API 返回的内容为空')
-      }
-
-      // 解析JSON响应
-      return this.parseQuestionsResponse(content)
+      
+      // 所有端点都失败了
+      throw lastError || new Error('所有API端点都失败了')
+      
     } catch (error) {
       console.error('调用 Deepseek API 时出错:', error)
       throw error
