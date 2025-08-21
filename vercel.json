@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "framework": "nextjs",
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "installCommand": "npm install",
+  "devCommand": "npm run dev",
+  "env": {
+    "DEEPSEEK_API_KEY": "@deepseek-api-key",
+    "NEXT_PUBLIC_APP_NAME": "@app-name",
+    "NEXT_PUBLIC_MAX_QUESTIONS": "@max-questions"
+  },
+  "build": {
+    "env": {
+      "DEEPSEEK_API_KEY": "@deepseek-api-key",
+      "NEXT_PUBLIC_APP_NAME": "@app-name", 
+      "NEXT_PUBLIC_MAX_QUESTIONS": "@max-questions"
+    }
+  },
+  "functions": {
+    "app/api/**/*.ts": {
+      "maxDuration": 30
+    }
+  }
+}
